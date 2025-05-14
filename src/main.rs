@@ -1,5 +1,9 @@
 use libc::{c_void, syscall};
 use std::mem;
+use std::collections::HashMap;
+
+mod network;
+use network::{Request, Response, VERSION};
 
 const SYS_SOCKET: i64 = 41;
 const SYS_BIND: i64 = 49;
@@ -65,8 +69,10 @@ fn main() {
 
             let mut buffer = [0u8; 1024];
             syscall(SYS_READ, client_fd, buffer.as_mut_ptr(), 1024);
-
-            let response = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, world!";
+            let request = Request::parse(std::str::from_utf8(&buffer).unwrap()).unwrap();
+            println!("{:?}", request);
+            let res = Response::new(200, HashMap::new(), format!("Hello, world! from {} {}", request.get_path(), request.get_header("Host").unwrap()), String::from(VERSION.to_string()));
+            let response = res.to_string();
             syscall(SYS_WRITE, client_fd, response.as_ptr(), response.len());
 
             syscall(SYS_CLOSE, client_fd);
