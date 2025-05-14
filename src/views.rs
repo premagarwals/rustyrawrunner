@@ -1,4 +1,4 @@
-use serde_json::{Value, from_str};
+use serde_json::{from_str, Value};
 
 use crate::network::{Request, Response, VERSION};
 use std::collections::HashMap;
@@ -12,31 +12,19 @@ pub fn not_found(request: &Request) -> Response {
 }
 
 pub fn signup(request: &Request) -> Response {
-    let (username, password) = match from_str::<Value>(&request.get_body()) {
-        Ok(json) => {
-            let jsonuser = json.get("username").and_then(|v| v.as_str());
-            let jsonpass = json.get("password").and_then(|v| v.as_str());
+    let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
+        Ok(json) => json,
+        Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".to_string(), String::from(VERSION)),
+    };
 
-            match (jsonuser, jsonpass) {
-                (Some(u), Some(p)) => (u.to_string(), p.to_string()),
-                _ => {
-                    return Response::new(
-                        400,
-                        HashMap::new(),
-                        "Incomplete Data: username or password not provided".into(),
-                        VERSION.into(),
-                    );
-                }
-            }
-        }
-        Err(e) => {
-            return Response::new(
-                400,
-                HashMap::new(),
-                format!("Invalid JSON: {e}"),
-                VERSION.into(),
-            );
-        }
+    let username = match data.remove("username") {
+        Some(Value::String(u)) => u,
+        _ => return Response::new(400, HashMap::new(), "Invalid JSON: Missing or invalid 'username'".to_string(), String::from(VERSION)),
+    };
+
+    let password = match data.remove("password") {
+        Some(Value::String(p)) => p,
+        _ => return Response::new(400, HashMap::new(), "Invalid JSON: Missing or invalid 'password'".to_string(), String::from(VERSION)),
     };
 
     Response::new(
