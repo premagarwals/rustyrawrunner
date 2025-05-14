@@ -5,7 +5,7 @@ mod network;
 mod views;
 mod routes;
 
-use network::{Request, Response};
+use network::Request;
 use routes::Router;
 
 const SYS_SOCKET: i64 = 41;

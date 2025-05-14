@@ -1,8 +1,40 @@
 use std::collections::HashMap;
 
 #[derive(Debug)]
+enum Method {
+    GET,
+    POST,
+    PUT,
+    DELETE,
+    UPDATE
+}
+
+impl Method {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "GET" => Some(Method::GET),
+            "POST" => Some(Method::POST),
+            "PUT" => Some(Method::PUT),
+            "DELETE" => Some(Method::DELETE),
+            "UPDATE" => Some(Method::UPDATE),
+            _ => None,
+        }
+    }
+    
+    pub fn to_string(&self) -> String {
+        match self {
+            Method::GET => "GET".to_string(),
+            Method::POST => "POST".to_string(),
+            Method::PUT => "PUT".to_string(),
+            Method::DELETE => "DELETE".to_string(),
+            Method::UPDATE => "UPDATE".to_string(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Request {
-    method: String,
+    method: Method,
     path: String,
     version: String,
     headers: HashMap<String, String>,
@@ -23,7 +55,7 @@ pub const VERSION: &str = "HTTP/1.1";
 impl Request {
     pub fn new(method: String, path: String, version: String, headers: HashMap<String, String>, body: String) -> Self {
         Self {
-            method,
+            method: Method::from_str(&method).unwrap_or(Method::GET),
             path,
             version,
             headers,
@@ -54,7 +86,7 @@ impl Request {
         let body = lines.collect::<Vec<_>>().join("\r\n");
 
         Ok(Self {
-            method,
+            method: Method::from_str(&method).unwrap_or(Method::GET),
             path,
             version,
             headers,
@@ -62,7 +94,7 @@ impl Request {
         })
     }
 
-    pub fn get_method(&self) -> &String {
+    pub fn get_method(&self) -> &Method {
         &self.method
     }
 
@@ -83,7 +115,7 @@ impl Request {
     }
 
     pub fn to_string(&self) -> String {
-        let mut result = format!("{} {} {}\r\n", self.method, self.path, self.version);
+        let mut result = format!("{} {} {}\r\n", self.method.to_string(), self.path, self.version);
         for (key, value) in &self.headers {
             result.push_str(&format!("{}: {}\r\n", key, value));
         }
