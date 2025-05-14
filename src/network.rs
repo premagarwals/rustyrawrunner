@@ -83,7 +83,7 @@ impl Request {
             headers.insert(key, value);
         }
 
-        let body = lines.collect::<Vec<_>>().join("\r\n");
+        let body = lines.collect::<Vec<_>>().join("\r\n").trim().replace("\0","");
 
         Ok(Self {
             method: Method::from_str(&method).unwrap_or(Method::GET),

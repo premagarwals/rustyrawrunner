@@ -15,6 +15,7 @@ impl Router {
     fn path_to_handler(path: &str, method: &Method) -> fn(&Request) -> Response {
        match (path, method) {
            ("/", &Method::GET)  => views::greet,
+           ("/signup", &Method::POST) => views::signup,
            (_,_) => views::not_found,
        } 
     }
