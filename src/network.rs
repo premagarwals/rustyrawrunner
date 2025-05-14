@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 #[derive(Debug)]
-enum Method {
+pub enum Method {
     GET,
     POST,
     PUT,
