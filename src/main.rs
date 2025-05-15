@@ -101,7 +101,7 @@ fn main() {
             syscall(SYS_READ, client_fd, buffer.as_mut_ptr(), 1024);
             let request = Request::parse(std::str::from_utf8(&buffer).unwrap()).unwrap();
             println!("{:?}", request);
-            let response = Router::route(&request).to_string();
+            let response = Router::route(&request, &pool).to_string();
             syscall(SYS_WRITE, client_fd, response.as_ptr(), response.len());
 
             syscall(SYS_CLOSE, client_fd);
