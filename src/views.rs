@@ -1,15 +1,12 @@
 use std::collections::HashMap;
 use serde_json::{from_str, json, Value};
-use serde::{Serialize};
-use bcrypt::{hash, DEFAULT_COST};
-use jsonwebtoken::{encode, EncodingKey, Header};
 use mysql::prelude::*;
 use std::env;
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 use crate::network::{Request, Response, VERSION};
 use crate::models::CodeHandler;
 use crate::database::get_pool;
+use crate::utils::auth::{create_jwt_for, verify_password, hash_password};
 
 pub fn greet(request: &Request) -> Response {
     Response::new(200, HashMap::new(), format!("Hello, world!\n\n<-- {}{} -->", request.get_header("Host").unwrap(), request.get_path()), String::from(VERSION))
@@ -35,7 +32,7 @@ pub fn signup(request: &Request) -> Response {
         _ => return Response::new(400, HashMap::new(), "Missing or invalid 'password'".to_string(), String::from(VERSION)),
     };
 
-    let hashed_password = match hash(&password, DEFAULT_COST) {
+    let hashed_password = match hash_password(&password) {
         Ok(h) => h,
         Err(_) => return Response::new(500, HashMap::new(), "Failed to hash password".to_string(), String::from(VERSION)),
     };
@@ -66,26 +63,7 @@ pub fn signup(request: &Request) -> Response {
         return Response::new(500, HashMap::new(), "Failed to save user".to_string(), String::from(VERSION));
     }
 
-    let expiration = SystemTime::now()
-        .checked_add(Duration::from_secs(60 * 30))
-        .expect("valid timestamp")
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards 🙃")
-        .as_secs() as usize;
-
-    #[derive(Serialize)]
-    struct Claims {
-        username: String,
-        exp: usize,
-    }
-
-    let claims = Claims {
-        username: username.clone(),
-        exp: expiration,
-    };
-
-    let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-    let token = match encode(&Header::default(), &claims, &EncodingKey::from_secret(jwt_secret.as_bytes())) {
+    let token = match create_jwt_for(&username) {
         Ok(t) => t,
         Err(_) => return Response::new(500, HashMap::new(), "Failed to create JWT".to_string(), String::from(VERSION)),
     };
@@ -135,30 +113,11 @@ pub fn login(request: &Request) -> Response {
         None => return Response::new(401, HashMap::new(), "Invalid username or password".to_string(), String::from(VERSION)),
     };
 
-    if !bcrypt::verify(&password, &stored_hash).unwrap_or(false) {
+    if !verify_password(&password, &stored_hash).unwrap_or(false) {
         return Response::new(401, HashMap::new(), "Invalid username or password".to_string(), String::from(VERSION));
     }
 
-    let expiration = SystemTime::now()
-        .checked_add(Duration::from_secs(60 * 30))
-        .expect("valid timestamp")
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards 🙃")
-        .as_secs() as usize;
-
-    #[derive(Serialize)]
-    struct Claims {
-        username: String,
-        exp: usize,
-    }
-
-    let claims = Claims {
-        username: username.clone(),
-        exp: expiration,
-    };
-
-    let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-    let token = match encode(&Header::default(), &claims, &EncodingKey::from_secret(jwt_secret.as_bytes())) {
+    let token = match create_jwt_for(&username) {
         Ok(t) => t,
         Err(_) => return Response::new(500, HashMap::new(), "Failed to create JWT".to_string(), String::from(VERSION)),
     };
