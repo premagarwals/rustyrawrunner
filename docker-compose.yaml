@@ -15,10 +15,11 @@ services:
       - mysql_data:/var/lib/mysql
   
   sandbox:
-    image: alpine:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
     container_name: code-sandbox
     restart: unless-stopped
-    command: sh -c "mkdir -p /sandbox && chmod 777 /sandbox && tail -f /dev/null"
     volumes:
       - ./sandbox:/sandbox
     deploy:

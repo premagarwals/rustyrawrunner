@@ -1,0 +1,12 @@
+FROM alpine:latest
+
+RUN apk add --no-cache \
+    g++ \
+    python3 \
+    openjdk17 \
+    bash \
+    coreutils
+
+WORKDIR /sandbox
+CMD ["sh", "-c", "mkdir -p /sandbox && chmod 777 /sandbox && tail -f /dev/null"]
+
