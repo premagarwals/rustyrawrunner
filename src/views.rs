@@ -4,7 +4,7 @@ use mysql::prelude::*;
 use std::env;
 
 use crate::network::{Request, Response, VERSION};
-use crate::models::CodeHandler;
+use crate::models::codehandler::CodeHandler;
 use crate::database::get_pool;
 use crate::utils::auth::{create_jwt_for, verify_password, hash_password};
 
