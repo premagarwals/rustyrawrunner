@@ -13,7 +13,6 @@ struct Claims {
 }
 
 pub struct User {
-    pub id: Option<u64>,
     pub username: String,
     pub password: String,
 }
@@ -21,14 +20,9 @@ pub struct User {
 impl User {
     pub fn new(username: String, password: String) -> Self {
         Self {
-            id: None,
             username,
             password,
         }
-    }
-
-    pub fn get_id(&self) -> Option<u64> {
-        self.id
     }
 
     fn hash_password(&self) -> Result<String, String> {
@@ -82,8 +76,6 @@ impl User {
             (&self.username, &hashed_password)
         ).map_err(|e| format!("Failed to create user: {}", e))?;
 
-        self.id = Some(conn.last_insert_id());
-
         self.create_jwt()
     }
 
@@ -92,14 +84,14 @@ impl User {
             .get_conn()
             .map_err(|e| format!("Database connection failed: {}", e))?;
 
-        let result: Option<(u64, String)> = conn
+        let result: Option<String> = conn
             .exec_first(
-                "SELECT id, password FROM users WHERE username = ?",
+                "SELECT password FROM users WHERE username = ?",
                 (&self.username,)
             )
             .map_err(|e| format!("Database query failed: {}", e))?;
 
-        let (id, hash) = result.ok_or("Invalid username or password")?;
+        let hash = result.ok_or("Invalid username or password")?;
 
         if !verify(&self.password, &hash)
             .map_err(|e| format!("Password verification failed: {}", e))? {
@@ -127,16 +119,15 @@ impl User {
             .get_conn()
             .map_err(|e| format!("Database connection failed: {}", e))?;
 
-        let result: Option<(u64, String)> = conn
+        let result: Option<String> = conn
             .exec_first(
-                "SELECT id, username FROM users WHERE username = ?",
+                "SELECT username FROM users WHERE username = ?",
                 (username,)
             )
             .map_err(|e| format!("Database query failed: {}", e))?;
 
         match result {
-            Some((id, username)) => Ok(User {
-                id: Some(id),
+            Some(username) => Ok(User {
                 username,
                 password: String::new(),
             }),

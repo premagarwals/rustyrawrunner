@@ -18,8 +18,9 @@ impl Router {
            ("/signup", &Method::POST) => views::signup,
            ("/login", &Method::POST) => views::login,
            ("/ide", &Method::POST) => views::ide,
+           ("/addproblem", &Method::POST) => views::add_problem,
+           ("/getproblems", &Method::GET) => views::get_all_problems,
            (_,_) => views::not_found,
        } 
     }
-
 }

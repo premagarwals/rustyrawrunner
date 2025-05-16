@@ -7,7 +7,6 @@ mod views;
 mod routes;
 mod models;
 mod database;
-mod utils;
 
 use network::Request;
 use routes::Router;

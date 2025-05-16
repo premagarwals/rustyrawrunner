@@ -4,6 +4,7 @@ use serde_json::{from_str, json, Value};
 use crate::network::{Request, Response, VERSION};
 use crate::models::codehandler::CodeHandler;
 use crate::models::user::User;
+use crate::models::problem::Problem;
 
 pub fn greet(request: &Request) -> Response {
     Response::new(200, HashMap::new(), format!("Hello, world!\n\n<-- {}{} -->", request.get_header("Host").unwrap(), request.get_path()), String::from(VERSION))
@@ -122,5 +123,72 @@ pub fn ide(request: &Request) -> Response {
     headers.insert("Content-Type".into(), "application/json".into());
 
     Response::new(200, headers, response_body.to_string(), VERSION.into())
+}
+
+pub fn add_problem(request: &Request) -> Response {
+    let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
+        Ok(json) => json,
+        Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".into(), VERSION.into()),
+    };
+
+    let token = match request.get_header("Authorization") {
+        Some(t) => t.split_whitespace().nth(1).unwrap_or(""),
+        None => return Response::new(401, HashMap::new(), "Missing or invalid 'Authorization' header".into(), VERSION.into()),
+    };
+
+    let creator = match User::get_username_from_jwt(&token) {
+        Ok(username) => username,
+        Err(_) => return Response::new(401, HashMap::new(), "Invalid token".into(), VERSION.into()),
+    };
+
+    let title = match data.remove("title") {
+        Some(Value::String(s)) => s,
+        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'title'".into(), VERSION.into()),
+    };
+
+    let description = match data.remove("description") {
+        Some(Value::String(s)) => s,
+        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'description'".into(), VERSION.into()),
+    };
+
+    let input = match data.remove("input") {
+        Some(Value::String(s)) => s,
+        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'input'".into(), VERSION.into()),
+    };
+
+    let output = match data.remove("output") {
+        Some(Value::String(s)) => s,
+        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'output'".into(), VERSION.into()),
+    };
+
+    let mut problem = Problem::new(creator, title, description, input, output);
+    
+    match problem.save() {
+        Ok(_) => {
+            let mut headers = HashMap::new();
+            headers.insert("Content-Type".into(), "application/json".into());
+            let response_body = json!({
+                "id": problem.id,
+                "message": "Problem added successfully"
+            });
+            Response::new(201, headers, response_body.to_string(), VERSION.into())
+        },
+        Err(e) => Response::new(500, HashMap::new(), e, VERSION.into()),
+    }
+}
+
+pub fn get_all_problems(_request: &Request) -> Response {
+    match Problem::get_all() {
+        Ok(problems) => {
+            let mut headers = HashMap::new();
+            headers.insert("Content-Type".into(), "application/json".into());
+            let response_body = json!({
+                "problems": problems,
+                "count": problems.len()
+            });
+            Response::new(200, headers, response_body.to_string(), VERSION.into())
+        },
+        Err(e) => Response::new(500, HashMap::new(), e, VERSION.into()),
+    }
 }
 

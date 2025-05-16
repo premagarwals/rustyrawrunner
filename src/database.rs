@@ -18,11 +18,25 @@ pub fn init_db() {
     POOL.set(pool).ok().expect("DB Pool already initialized");
 
     let mut conn = get_pool().get_conn().expect("No conn :(");
-    conn.query_drop(
+        conn.query_drop(
         r"CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(100),
-            password TEXT
+            username VARCHAR(100) NOT NULL PRIMARY KEY,
+            password TEXT NOT NULL
+        )"
+    ).unwrap();
+
+        conn.query_drop(
+        r"CREATE TABLE IF NOT EXISTS problems (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            creator VARCHAR(100) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            input TEXT NOT NULL,
+            output TEXT NOT NULL,
+            solved BIGINT UNSIGNED DEFAULT 0,
+            tried BIGINT UNSIGNED DEFAULT 0,
+            INDEX creator_idx (creator),
+            FOREIGN KEY (creator) REFERENCES users(username) ON DELETE CASCADE
         )"
     ).unwrap();
 
