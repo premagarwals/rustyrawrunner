@@ -3,15 +3,16 @@ use std::mem;
 use mysql::*;
 use mysql::prelude::*;
 use dotenvy::dotenv;
-use std::env;
 
 mod network;
 mod views;
 mod routes;
 mod models;
+mod database;
 
 use network::Request;
 use routes::Router;
+use database::init_db;
 
 const SYS_SOCKET: i64 = 41;
 const SYS_BIND: i64 = 49;
@@ -39,28 +40,8 @@ fn htons(port: u16) -> u16 {
 
 fn main() {
     dotenv().ok();
+    init_db();
 
-    let user = env::var("MYSQL_USER").expect("MYSQL_USER not set");
-    let pass = env::var("MYSQL_PASSWORD").expect("MYSQL_PASSWORD not set");
-    let host = env::var("MYSQL_HOST").unwrap_or_else(|_| "localhost".to_string());
-    let port = env::var("MYSQL_PORT").unwrap_or_else(|_| "3306".to_string());
-    let db = env::var("MYSQL_DATABASE").expect("MYSQL_DATABASE not set");
-
-    let url = format!("mysql://{user}:{pass}@{host}:{port}/{db}");
-
-    let pool = Pool::new(url.as_str()).expect("Couldn't connect to DB");
-    let mut conn = pool.get_conn().expect("No conn :(");
-
-    conn.query_drop(
-        r"CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(100),
-            password TEXT
-        )"
-    ).unwrap();
-
-    println!("Table connected, let’s gooo 😎");
-    
     unsafe {
         let sockfd = syscall(SYS_SOCKET, AF_INET, SOCK_STREAM, 0) as i32;
         if sockfd < 0 {
@@ -102,7 +83,7 @@ fn main() {
             syscall(SYS_READ, client_fd, buffer.as_mut_ptr(), 1024);
             let request = Request::parse(std::str::from_utf8(&buffer).unwrap()).unwrap();
             println!("{:?}", request);
-            let response = Router::route(&request, &pool).to_string();
+            let response = Router::route(&request).to_string();
             syscall(SYS_WRITE, client_fd, response.as_ptr(), response.len());
 
             syscall(SYS_CLOSE, client_fd);

@@ -9,16 +9,17 @@ use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 use crate::network::{Request, Response, VERSION};
 use crate::models::CodeHandler;
+use crate::database::get_pool;
 
-pub fn greet(request: &Request, _pool: &mysql::Pool) -> Response {
+pub fn greet(request: &Request) -> Response {
     Response::new(200, HashMap::new(), format!("Hello, world!\n\n<-- {}{} -->", request.get_header("Host").unwrap(), request.get_path()), String::from(VERSION))
 }
 
-pub fn not_found(request: &Request, _pool: &mysql::Pool) -> Response {
+pub fn not_found(request: &Request) -> Response {
     Response::new(404, HashMap::new(), format!("Not found: {}", request.get_path()), String::from(VERSION))
 }
 
-pub fn signup(request: &Request, pool: &mysql::Pool) -> Response {
+pub fn signup(request: &Request) -> Response {
     let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
         Ok(json) => json,
         Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".to_string(), String::from(VERSION)),
@@ -39,7 +40,7 @@ pub fn signup(request: &Request, pool: &mysql::Pool) -> Response {
         Err(_) => return Response::new(500, HashMap::new(), "Failed to hash password".to_string(), String::from(VERSION)),
     };
 
-    let mut conn = match pool.get_conn() {
+    let mut conn = match get_pool().get_conn() {
         Ok(c) => c,
         Err(_) => return Response::new(500, HashMap::new(), "DB connection failed".to_string(), String::from(VERSION)),
     };
@@ -100,7 +101,7 @@ pub fn signup(request: &Request, pool: &mysql::Pool) -> Response {
     )
 }
 
-pub fn login(request: &Request, pool: &mysql::Pool) -> Response {
+pub fn login(request: &Request) -> Response {
     let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
         Ok(json) => json,
         Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".to_string(), String::from(VERSION)),
@@ -116,7 +117,7 @@ pub fn login(request: &Request, pool: &mysql::Pool) -> Response {
         _ => return Response::new(400, HashMap::new(), "Missing or invalid 'password'".to_string(), String::from(VERSION)),
     };
 
-    let mut conn = match pool.get_conn() {
+    let mut conn = match get_pool().get_conn() {
         Ok(c) => c,
         Err(_) => return Response::new(500, HashMap::new(), "DB connection failed".to_string(), String::from(VERSION)),
     };
@@ -173,7 +174,7 @@ pub fn login(request: &Request, pool: &mysql::Pool) -> Response {
     )
 }
 
-pub fn ide(request: &Request, _pool: &mysql::Pool) -> Response {
+pub fn ide(request: &Request) -> Response {
     let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
         Ok(json) => json,
         Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".into(), VERSION.into()),
