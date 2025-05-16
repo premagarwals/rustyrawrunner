@@ -17,6 +17,7 @@ impl Router {
            ("/", &Method::GET)  => views::greet,
            ("/signup", &Method::POST) => views::signup,
            ("/login", &Method::POST) => views::login,
+           ("/ide", &Method::POST) => views::ide,
            (_,_) => views::not_found,
        } 
     }

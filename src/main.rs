@@ -8,6 +8,7 @@ use std::env;
 mod network;
 mod views;
 mod routes;
+mod models;
 
 use network::Request;
 use routes::Router;

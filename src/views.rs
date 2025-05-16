@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use serde_json::{from_str, Value};
+use serde_json::{from_str, json, Value};
 use serde::{Serialize};
 use bcrypt::{hash, DEFAULT_COST};
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -8,6 +8,7 @@ use std::env;
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 use crate::network::{Request, Response, VERSION};
+use crate::models::CodeHandler;
 
 pub fn greet(request: &Request, _pool: &mysql::Pool) -> Response {
     Response::new(200, HashMap::new(), format!("Hello, world!\n\n<-- {}{} -->", request.get_header("Host").unwrap(), request.get_path()), String::from(VERSION))
@@ -170,5 +171,44 @@ pub fn login(request: &Request, pool: &mysql::Pool) -> Response {
         format!(r#"{{"token": "{}"}}"#, token),
         String::from(VERSION),
     )
+}
+
+pub fn ide(request: &Request, _pool: &mysql::Pool) -> Response {
+    let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
+        Ok(json) => json,
+        Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".into(), VERSION.into()),
+    };
+
+    let code = match data.remove("code") {
+        Some(Value::String(s)) => s,
+        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'code'".into(), VERSION.into()),
+    };
+
+    let language = match data.remove("language") {
+        Some(Value::String(s)) => s.to_lowercase(),
+        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'language'".into(), VERSION.into()),
+    };
+
+    let input = match data.remove("input") {
+        Some(Value::String(i)) => i,
+        _ => String::new(),
+    };
+
+    let mut handler = CodeHandler::new(code, language);
+    
+    handler.use_input(input);
+    handler.execute();
+
+    let response_body = json!({
+        "output": handler.get_output(),
+        "error": handler.get_error(),
+        "runtime": handler.get_runtime(),
+        "memory": handler.get_memory(),
+    });
+
+    let mut headers = HashMap::new();
+    headers.insert("Content-Type".into(), "application/json".into());
+
+    Response::new(200, headers, response_body.to_string(), VERSION.into())
 }
 
