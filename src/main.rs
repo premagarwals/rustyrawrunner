@@ -1,7 +1,5 @@
 use libc::{c_void, syscall};
 use std::mem;
-use mysql::*;
-use mysql::prelude::*;
 use dotenvy::dotenv;
 
 mod network;
