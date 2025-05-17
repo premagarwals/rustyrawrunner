@@ -19,7 +19,7 @@ impl Router {
            ("/login/" | "/login", &Method::POST) => views::login,
            ("/ide/" | "/ide", &Method::POST) => views::ide,
            ("/addproblem/" | "/addproblem", &Method::POST) => views::add_problem,
-           ("/getproblems/" | "getproblems", &Method::GET) => views::get_all_problems,
+           ("/getproblems/" | "/getproblems", &Method::GET) => views::get_all_problems,
             (_, &Method::OPTIONS) => views::handle_options,
            (_,_) => views::not_found,
        } 
