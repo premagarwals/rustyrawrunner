@@ -192,3 +192,9 @@ pub fn get_all_problems(_request: &Request) -> Response {
     }
 }
 
+pub fn handle_options(_request: &Request) -> Response {
+    let mut headers = HashMap::new();
+    headers.insert("Content-Type".to_string(), "text/plain".to_string());
+    Response::new(204, headers, String::new(), VERSION.to_string())
+}
+

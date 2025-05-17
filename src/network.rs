@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 
 #[derive(Debug)]
 pub enum Method {
@@ -6,7 +7,8 @@ pub enum Method {
     POST,
     PUT,
     DELETE,
-    UPDATE
+    UPDATE,
+    OPTIONS
 }
 
 impl Method {
@@ -17,6 +19,7 @@ impl Method {
             "PUT" => Some(Method::PUT),
             "DELETE" => Some(Method::DELETE),
             "UPDATE" => Some(Method::UPDATE),
+            "OPTIONS" => Some(Method::OPTIONS),
             _ => None,
         }
     }
@@ -28,6 +31,7 @@ impl Method {
             Method::PUT => "PUT".to_string(),
             Method::DELETE => "DELETE".to_string(),
             Method::UPDATE => "UPDATE".to_string(),
+            Method::OPTIONS => "OPTIONS".to_string(),
         }
     }
 }
@@ -126,10 +130,25 @@ impl Request {
 }
 
 impl Response {
-    pub fn new(status: u16, headers: HashMap<String, String>, body: String, version: String) -> Self {
+    pub fn new(status: u16, mut headers: HashMap<String, String>, body: String, version: String) -> Self {
+        // Add default CORS headers
+        headers.insert("Access-Control-Allow-Credentials".to_string(), "true".to_string());
+        headers.insert("Access-Control-Allow-Methods".to_string(), 
+            "GET, POST, PUT, DELETE, OPTIONS".to_string());
+        headers.insert("Access-Control-Allow-Headers".to_string(), 
+            "Content-Type, Authorization".to_string());
+        
+        // Handle Origin
+        if let Ok(allowed_origins) = env::var("ALLOWED_ORIGINS") {
+            headers.insert("Access-Control-Allow-Origin".to_string(), allowed_origins);
+        } else {
+            headers.insert("Access-Control-Allow-Origin".to_string(), 
+                "http://localhost:3000".to_string());
+        }
+
         Self {
-            status,
             version,
+            status,
             headers,
             body,
         }
