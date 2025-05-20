@@ -18,14 +18,16 @@ pub fn init_db() {
     POOL.set(pool).ok().expect("DB Pool already initialized");
 
     let mut conn = get_pool().get_conn().expect("No conn :(");
-        conn.query_drop(
+        
+    conn.query_drop(
         r"CREATE TABLE IF NOT EXISTS users (
             username VARCHAR(100) NOT NULL PRIMARY KEY,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            solves JSON DEFAULT ('[]')
         )"
     ).unwrap();
 
-        conn.query_drop(
+    conn.query_drop(
         r"CREATE TABLE IF NOT EXISTS problems (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             creator VARCHAR(100) NOT NULL,

@@ -116,4 +116,26 @@ impl Problem {
             (),
         ).map_err(|e| format!("Database query failed: {}", e))
     }
+
+    pub fn increment_tried(id: u64) -> Result<(), String> {
+        let mut conn = get_pool()
+            .get_conn()
+            .map_err(|e| format!("Database connection failed: {}", e))?;
+
+        conn.exec_drop(
+            "UPDATE problems SET tried = tried + 1 WHERE id = ?",
+            (id,)
+        ).map_err(|e| format!("Failed to update tried count: {}", e))
+    }
+
+    pub fn increment_solved(id: u64) -> Result<(), String> {
+        let mut conn = get_pool()
+            .get_conn()
+            .map_err(|e| format!("Database connection failed: {}", e))?;
+
+        conn.exec_drop(
+            "UPDATE problems SET solved = solved + 1 WHERE id = ?",
+            (id,)
+        ).map_err(|e| format!("Failed to update solved count: {}", e))
+    }
 }

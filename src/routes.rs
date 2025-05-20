@@ -11,9 +11,19 @@ impl Router {
         if let Some(problem_id) = Self::extract_problem_id(request.get_path()) {
             return match request.get_method() {
                 Method::GET => views::get_problem_by_id(&request, problem_id),
+                Method::OPTIONS => views::handle_options(&request),
                 _ => views::not_found(&request),
             };
         }
+
+        if let Some(problem_id) = Self::extract_solve_id(request.get_path()) {
+            return match request.get_method() {
+                Method::POST => views::solve_problem(&request, problem_id),
+                Method::OPTIONS => views::handle_options(&request),
+                _ => views::not_found(&request),
+            };
+        }
+
         let handler = Self::path_to_handler(&request.get_path(), &request.get_method());
         handler(request)
     }
@@ -33,7 +43,16 @@ impl Router {
 
     fn extract_problem_id(path: &str) -> Option<u64> {
         let parts: Vec<&str> = path.split('/').collect();
-        if parts.len() == 3 && parts[1] == "problem" {
+        if parts.len() > 2 && parts[1] == "problem" {
+            parts[2].parse().ok()
+        } else {
+            None
+        }
+    }
+
+    fn extract_solve_id(path: &str) -> Option<u64> {
+        let parts: Vec<&str> = path.split('/').collect();
+        if parts.len() > 2 && parts[1] == "solve" {
             parts[2].parse().ok()
         } else {
             None

@@ -275,6 +275,101 @@ pub fn get_problem_by_id(request: &Request, id: u64) -> Response {
     }
 }
 
+pub fn solve_problem(request: &Request, problem_id: u64) -> Response {
+    let token = match request.get_header("Authorization") {
+        Some(t) => t.split_whitespace().nth(1).unwrap_or(""),
+        None => {
+            let response_body = json!({ "message": "Missing or invalid 'Authorization' header" });
+            return Response::new(401, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+    };
+
+    let username = match User::get_username_from_jwt(token) {
+        Ok(u) => u,
+        Err(e) => {
+            let response_body = json!({ "message": e });
+            return Response::new(401, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+    };
+
+    let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
+        Ok(json) => json,
+        Err(_) => {
+            let response_body = json!({ "message": "Invalid JSON" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+    };
+
+    let code = match data.remove("code") {
+        Some(Value::String(s)) => s,
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'code'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+    };
+
+    let language = match data.remove("language") {
+        Some(Value::String(s)) => s.to_lowercase(),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'language'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+    };
+
+    let problem = match Problem::find_by_id(problem_id) {
+        Ok(Some(p)) => p,
+        Ok(None) => {
+            let response_body = json!({ "message": format!("Problem {} not found", problem_id) });
+            return Response::new(404, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+        Err(e) => {
+            let response_body = json!({ "message": e });
+            return Response::new(500, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+    };
+
+    if let Err(e) = Problem::increment_tried(problem_id) {
+        let response_body = json!({ "message": e });
+        return Response::new(500, HashMap::new(), response_body.to_string(), VERSION.into());
+    }
+
+    let mut handler = CodeHandler::new(code, language);
+    handler.use_input(problem.input.clone());
+    handler.execute();
+
+    if handler.get_output().trim() == problem.output.trim() {
+        let mut user = User::new(username, String::new());
+        if let Err(e) = user.new_solve(problem_id) {
+            let response_body = json!({ "message": e });
+            return Response::new(500, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+
+        if let Err(e) = Problem::increment_solved(problem_id) {
+            let response_body = json!({ "message": e });
+            return Response::new(500, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
+
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".into(), "application/json".into());
+        let response_body = json!({
+            "message": "Problem solved successfully!",
+            "output": handler.get_output(),
+            "runtime": handler.get_runtime(),
+            "memory": handler.get_memory()
+        });
+        Response::new(200, headers, response_body.to_string(), VERSION.into())
+    } else {
+        let response_body = json!({
+            "message": "Wrong answer",
+            "output": handler.get_output(),
+            "error": handler.get_error(),
+            "runtime": handler.get_runtime(),
+            "memory": handler.get_memory()
+        });
+        Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into())
+    }
+}
+
 pub fn handle_options(_request: &Request) -> Response {
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "text/plain".to_string());

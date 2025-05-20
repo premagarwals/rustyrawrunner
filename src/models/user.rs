@@ -5,6 +5,7 @@ use jsonwebtoken::{encode, decode, Header, EncodingKey, DecodingKey};
 use serde::{Serialize, Deserialize};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use mysql::prelude::Queryable;
+use serde_json::Value as JsonValue;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -15,6 +16,7 @@ struct Claims {
 pub struct User {
     pub username: String,
     pub password: String,
+    pub solves: Vec<u64>,
 }
 
 impl User {
@@ -22,6 +24,7 @@ impl User {
         Self {
             username,
             password,
+            solves: Vec::new(),
         }
     }
 
@@ -114,25 +117,54 @@ impl User {
         Ok(token_data.claims.username)
     }
 
+    pub fn new_solve(&mut self, problem_id: u64) -> Result<(), String> {
+        let mut conn = get_pool()
+            .get_conn()
+            .map_err(|e| format!("Database connection failed: {}", e))?;
+
+        if !self.solves.contains(&problem_id) {
+            self.solves.push(problem_id);
+            
+            conn.exec_drop(
+                r"UPDATE users 
+                  SET solves = JSON_ARRAY_APPEND(
+                      IF(solves IS NULL, '[]', solves),
+                      '$',
+                      ?
+                  )
+                  WHERE username = ? AND NOT JSON_CONTAINS(solves, CAST(? AS JSON))",
+                (problem_id, &self.username, problem_id)
+            ).map_err(|e| format!("Failed to update solves: {}", e))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn get_solves(&self) -> &Vec<u64> {
+        &self.solves
+    }
+
     pub fn get_user_by_username(username: &str) -> Result<User, String> {
         let mut conn = get_pool()
             .get_conn()
             .map_err(|e| format!("Database connection failed: {}", e))?;
 
-        let result: Option<String> = conn
+        let (password, solves_json): (String, String) = conn
             .exec_first(
-                "SELECT username FROM users WHERE username = ?",
+                "SELECT password, IFNULL(solves, '[]') FROM users WHERE username = ?",
                 (username,)
             )
-            .map_err(|e| format!("Database query failed: {}", e))?;
+            .map_err(|e| format!("Database query failed: {}", e))?
+            .ok_or("User not found")?;
 
-        match result {
-            Some(username) => Ok(User {
-                username,
-                password: String::new(),
-            }),
-            None => Err("User not found".to_string()),
-        }
+        let solves: Vec<u64> = serde_json::from_str(&solves_json)
+            .map_err(|e| format!("Failed to parse solves: {}", e))?;
+
+        Ok(User {
+            username: username.to_string(),
+            password,
+            solves,
+        })
     }
 }
 

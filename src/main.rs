@@ -77,8 +77,8 @@ fn main() {
                 continue;
             }
 
-            let mut buffer = [0u8; 1024];
-            syscall(SYS_READ, client_fd, buffer.as_mut_ptr(), 1024);
+            let mut buffer = [0u8; 10000];
+            syscall(SYS_READ, client_fd, buffer.as_mut_ptr(), 10000);
             let request = Request::parse(std::str::from_utf8(&buffer).unwrap()).unwrap();
             println!("{:?}", request);
             let response = Router::route(&request).to_string();
