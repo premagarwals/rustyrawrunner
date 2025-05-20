@@ -251,6 +251,30 @@ pub fn get_all_problems(_request: &Request) -> Response {
     }
 }
 
+pub fn get_problem_by_id(request: &Request, id: u64) -> Response {
+    match Problem::find_by_id(id) {
+        Ok(Some(problem)) => {
+            let mut headers = HashMap::new();
+            headers.insert("Content-Type".into(), "application/json".into());
+            let response_body = json!({
+                "message": "Problem retrieved successfully",
+                "problem": problem
+            });
+            Response::new(200, headers, response_body.to_string(), VERSION.into())
+        },
+        Ok(None) => {
+            let response_body = json!({
+                "message": format!("Problem with id {} not found", id)
+            });
+            Response::new(404, HashMap::new(), response_body.to_string(), VERSION.into())
+        },
+        Err(e) => {
+            let response_body = json!({ "message": e });
+            Response::new(500, HashMap::new(), response_body.to_string(), VERSION.into())
+        }
+    }
+}
+
 pub fn handle_options(_request: &Request) -> Response {
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "text/plain".to_string());
