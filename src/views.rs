@@ -11,23 +11,35 @@ pub fn greet(request: &Request) -> Response {
 }
 
 pub fn not_found(request: &Request) -> Response {
-    Response::new(404, HashMap::new(), format!("Not found: {}", request.get_path()), String::from(VERSION))
+    let response_body = json!({
+        "message": format!("Not found: {}", request.get_path())
+    });
+    Response::new(404, HashMap::new(), response_body.to_string(), String::from(VERSION))
 }
 
 pub fn signup(request: &Request) -> Response {
     let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
         Ok(json) => json,
-        Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".to_string(), String::from(VERSION)),
+        Err(_) => {
+            let response_body = json!({ "message": "Invalid JSON" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), String::from(VERSION));
+        }
     };
 
     let username = match data.remove("username") {
         Some(Value::String(u)) => u,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'username'".to_string(), String::from(VERSION)),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'username'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), String::from(VERSION));
+        }
     };
 
     let password = match data.remove("password") {
         Some(Value::String(p)) => p,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'password'".to_string(), String::from(VERSION)),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'password'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), String::from(VERSION));
+        }
     };
 
     let mut user = User::new(username, password);
@@ -36,16 +48,16 @@ pub fn signup(request: &Request) -> Response {
         Ok(token) => {
             let mut headers = HashMap::new();
             headers.insert("Content-Type".to_string(), "application/json".to_string());
-            Response::new(
-                200,
-                headers,
-                format!(r#"{{"token": "{}"}}"#, token),
-                String::from(VERSION)
-            )
+            let response_body = json!({
+                "message": "Registration successful",
+                "token": token
+            });
+            Response::new(200, headers, response_body.to_string(), String::from(VERSION))
         },
         Err(e) => {
             let status = if e.contains("already taken") { 409 } else { 500 };
-            Response::new(status, HashMap::new(), e, String::from(VERSION))
+            let response_body = json!({ "message": e });
+            Response::new(status, HashMap::new(), response_body.to_string(), String::from(VERSION))
         }
     }
 }
@@ -53,17 +65,26 @@ pub fn signup(request: &Request) -> Response {
 pub fn login(request: &Request) -> Response {
     let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
         Ok(json) => json,
-        Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".to_string(), String::from(VERSION)),
+        Err(_) => {
+            let response_body = json!({ "message": "Invalid JSON" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), String::from(VERSION));
+        }
     };
 
     let username = match data.remove("username") {
         Some(Value::String(u)) => u,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'username'".to_string(), String::from(VERSION)),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'username'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), String::from(VERSION));
+        }
     };
 
     let password = match data.remove("password") {
         Some(Value::String(p)) => p,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'password'".to_string(), String::from(VERSION)),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'password'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), String::from(VERSION));
+        }
     };
 
     let user = User::new(username, password);
@@ -72,16 +93,16 @@ pub fn login(request: &Request) -> Response {
         Ok(token) => {
             let mut headers = HashMap::new();
             headers.insert("Content-Type".to_string(), "application/json".to_string());
-            Response::new(
-                200,
-                headers,
-                format!(r#"{{"token": "{}"}}"#, token),
-                String::from(VERSION)
-            )
+            let response_body = json!({
+                "message": "Login successful",
+                "token": token
+            });
+            Response::new(200, headers, response_body.to_string(), String::from(VERSION))
         },
         Err(e) => {
             let status = if e.contains("Invalid username or password") { 401 } else { 500 };
-            Response::new(status, HashMap::new(), e, String::from(VERSION))
+            let response_body = json!({ "message": e });
+            Response::new(status, HashMap::new(), response_body.to_string(), String::from(VERSION))
         }
     }
 }
@@ -89,17 +110,26 @@ pub fn login(request: &Request) -> Response {
 pub fn ide(request: &Request) -> Response {
     let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
         Ok(json) => json,
-        Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".into(), VERSION.into()),
+        Err(_) => {
+            let response_body = json!({ "message": "Invalid JSON" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let code = match data.remove("code") {
         Some(Value::String(s)) => s,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'code'".into(), VERSION.into()),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'code'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let language = match data.remove("language") {
         Some(Value::String(s)) => s.to_lowercase(),
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'language'".into(), VERSION.into()),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'language'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let input = match data.remove("input") {
@@ -113,6 +143,7 @@ pub fn ide(request: &Request) -> Response {
     handler.execute();
 
     let response_body = json!({
+        "message": if handler.get_error().is_empty() { "Execution successful" } else { "Execution failed" },
         "output": handler.get_output(),
         "error": handler.get_error(),
         "runtime": handler.get_runtime(),
@@ -128,37 +159,58 @@ pub fn ide(request: &Request) -> Response {
 pub fn add_problem(request: &Request) -> Response {
     let mut data: HashMap<String, Value> = match from_str(request.get_body()) {
         Ok(json) => json,
-        Err(_) => return Response::new(400, HashMap::new(), "Invalid JSON".into(), VERSION.into()),
+        Err(_) => {
+            let response_body = json!({ "message": "Invalid JSON" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let token = match request.get_header("Authorization") {
         Some(t) => t.split_whitespace().nth(1).unwrap_or(""),
-        None => return Response::new(401, HashMap::new(), "Missing or invalid 'Authorization' header".into(), VERSION.into()),
+        None => {
+            let response_body = json!({ "message": "Missing or invalid 'Authorization' header" });
+            return Response::new(401, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let creator = match User::get_username_from_jwt(&token) {
         Ok(username) => username,
-        Err(_) => return Response::new(401, HashMap::new(), "Invalid token".into(), VERSION.into()),
+        Err(_) => {
+            let response_body = json!({ "message": "Invalid token" });
+            return Response::new(401, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let title = match data.remove("title") {
         Some(Value::String(s)) => s,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'title'".into(), VERSION.into()),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'title'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let description = match data.remove("description") {
         Some(Value::String(s)) => s,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'description'".into(), VERSION.into()),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'description'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let input = match data.remove("input") {
         Some(Value::String(s)) => s,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'input'".into(), VERSION.into()),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'input'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let output = match data.remove("output") {
         Some(Value::String(s)) => s,
-        _ => return Response::new(400, HashMap::new(), "Missing or invalid 'output'".into(), VERSION.into()),
+        _ => {
+            let response_body = json!({ "message": "Missing or invalid 'output'" });
+            return Response::new(400, HashMap::new(), response_body.to_string(), VERSION.into());
+        }
     };
 
     let mut problem = Problem::new(creator, title, description, input, output);
@@ -168,12 +220,15 @@ pub fn add_problem(request: &Request) -> Response {
             let mut headers = HashMap::new();
             headers.insert("Content-Type".into(), "application/json".into());
             let response_body = json!({
-                "id": problem.id,
-                "message": "Problem added successfully"
+                "message": "Problem added successfully",
+                "id": problem.id
             });
             Response::new(201, headers, response_body.to_string(), VERSION.into())
         },
-        Err(e) => Response::new(500, HashMap::new(), e, VERSION.into()),
+        Err(e) => {
+            let response_body = json!({ "message": e });
+            Response::new(500, HashMap::new(), response_body.to_string(), VERSION.into())
+        }
     }
 }
 
@@ -183,18 +238,23 @@ pub fn get_all_problems(_request: &Request) -> Response {
             let mut headers = HashMap::new();
             headers.insert("Content-Type".into(), "application/json".into());
             let response_body = json!({
+                "message": "Problems retrieved successfully",
                 "problems": problems,
                 "count": problems.len()
             });
             Response::new(200, headers, response_body.to_string(), VERSION.into())
         },
-        Err(e) => Response::new(500, HashMap::new(), e, VERSION.into()),
+        Err(e) => {
+            let response_body = json!({ "message": e });
+            Response::new(500, HashMap::new(), response_body.to_string(), VERSION.into())
+        }
     }
 }
 
 pub fn handle_options(_request: &Request) -> Response {
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "text/plain".to_string());
-    Response::new(204, headers, String::new(), VERSION.to_string())
+    let response_body = json!({ "message": "Options request successful" });
+    Response::new(204, headers, response_body.to_string(), VERSION.to_string())
 }
 
